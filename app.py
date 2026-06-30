@@ -581,7 +581,7 @@ st.markdown(f"""
 
 col_in, col_btn = st.columns([4, 1])
 with col_in:
-    ticker_input = st.text_input("", placeholder="Enter ticker(s) — e.g.  V   MA   PYPL   ASTS",
+    ticker_input = st.text_input("", placeholder="Enter ticker(s) — e.g. V, MA, PYPL, ASTS",
                                  label_visibility="collapsed")
 with col_btn:
     generate = st.button("Generate", use_container_width=True)
