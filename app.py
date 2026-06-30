@@ -1,4 +1,6 @@
 import io
+import base64
+import os
 import streamlit as st
 import yfinance as yf
 from datetime import datetime
@@ -6,10 +8,18 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.platypus import (
-    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable
+    SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, Image as RLImage
 )
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+
+LOGO_PATH = os.path.join(os.path.dirname(__file__), "logo.png")
+
+def logo_b64():
+    if os.path.exists(LOGO_PATH):
+        with open(LOGO_PATH, "rb") as f:
+            return base64.b64encode(f.read()).decode()
+    return None
 
 st.set_page_config(
     page_title="Manole Capital — Equity Tearsheet",
@@ -374,26 +384,48 @@ def build_pdf(d):
         return [HRFlowable(width="100%", thickness=0.5, color=BLUE, spaceAfter=3),
                 Paragraph(title.upper(), S_sec)]
 
+    PAGE_H = letter[1]
+    PAGE_W = letter[0]
+    L_MAR = 0.6*inch
+    R_MAR = 0.6*inch
+    T_MAR = 0.45*inch
+    B_MAR = 0.55*inch
+    USABLE_H = PAGE_H - T_MAR - B_MAR
+
     doc = SimpleDocTemplate(buf, pagesize=letter,
-        leftMargin=0.6*inch, rightMargin=0.6*inch,
-        topMargin=0.45*inch, bottomMargin=0.55*inch)
+        leftMargin=L_MAR, rightMargin=R_MAR,
+        topMargin=T_MAR, bottomMargin=B_MAR)
 
     story = []
 
-    # header
+    # header — logo left, company info right
     sub = f"{d['ticker']}  ·  {d['sector']}  ·  {d['industry']}"
+    if os.path.exists(LOGO_PATH):
+        logo_img = RLImage(LOGO_PATH, width=1.4*inch, height=0.55*inch)
+        logo_cell = logo_img
+    else:
+        logo_cell = Paragraph("", sty("empty"))
+
+    hdr_left = Table(
+        [[logo_cell],
+         [Paragraph(f"<font size='14' color='#ffffff'><b>{d['name']}</b></font>", sty("cn", textColor=WHITE, fontSize=14, fontName="Helvetica-Bold", leading=18))],
+         [Paragraph(f"<font size='9' color='#8C9DB5'>{sub}</font>", sty("cs", textColor=SILVER, fontSize=9, leading=12))]],
+        colWidths=[4.5*inch]
+    )
+    hdr_left.setStyle(TableStyle([("LEFTPADDING",(0,0),(-1,-1),0),("TOPPADDING",(0,0),(-1,-1),2),("BOTTOMPADDING",(0,0),(-1,-1),2)]))
+
     hdr = [[
-        Paragraph(f"{d['name']}<br/><font size='10' color='#8C9DB5'>{sub}</font>", S_co),
+        hdr_left,
         Paragraph(
-            f"<b>Manole Capital Management</b><br/>Equity Tearsheet<br/>{d['generated']}",
+            f"<b>Equity Tearsheet</b><br/>Manole Capital Management<br/>{d['generated']}",
             sty("r", fontSize=8, textColor=SILVER, alignment=TA_RIGHT, leading=13)),
     ]]
     ht = Table(hdr, colWidths=[4.5*inch, 2.4*inch])
     ht.setStyle(TableStyle([
         ("BACKGROUND",    (0,0),(-1,-1),NAVY),
         ("VALIGN",        (0,0),(-1,-1),"MIDDLE"),
-        ("TOPPADDING",    (0,0),(-1,-1),14),
-        ("BOTTOMPADDING", (0,0),(-1,-1),14),
+        ("TOPPADDING",    (0,0),(-1,-1),12),
+        ("BOTTOMPADDING", (0,0),(-1,-1),12),
         ("LEFTPADDING",   (0,0),(0,-1),14),
         ("RIGHTPADDING",  (1,0),(1,-1),14),
     ]))
@@ -473,27 +505,68 @@ def build_pdf(d):
     if d["website"]:
         res.append(("Investor Relations", f'<link href="{d["website"]}">{d["website"]}</link>'))
     story.append(one_col(res))
-    story += [Spacer(1, 14),
-              HRFlowable(width="100%", thickness=0.4, color=SILVER),
-              Spacer(1, 4),
-              Paragraph("Data sourced from Yahoo Finance. For informational purposes only — not investment advice. "
-                        "Manole Capital Management intern research tool.", S_foot)]
 
-    doc.build(story)
+    # ── footer pinned to bottom of every page via onPage callback ────
+    FOOTER_TEXT = ("Data sourced from Yahoo Finance  ·  For informational purposes only  ·  "
+                   "Not investment advice  ·  Manole Capital Management")
+
+    def draw_footer(canvas, doc):
+        canvas.saveState()
+        canvas.setStrokeColorRGB(0.55, 0.61, 0.71)
+        canvas.setLineWidth(0.4)
+        canvas.line(L_MAR, B_MAR - 6, letter[0] - R_MAR, B_MAR - 6)
+        canvas.setFont("Helvetica", 6.5)
+        canvas.setFillColorRGB(0.55, 0.61, 0.71)
+        canvas.drawCentredString(letter[0] / 2, B_MAR - 16, FOOTER_TEXT)
+        canvas.restoreState()
+
+    # ── binary search: max filler that keeps same page count ─────────
+    class _Counter(SimpleDocTemplate):
+        pg = 0
+        def handle_pageEnd(self):
+            self.pg += 1
+            super().handle_pageEnd()
+
+    def count_pages(s, filler_pts=0):
+        tmp = io.BytesIO()
+        c = _Counter(tmp, pagesize=letter,
+                     leftMargin=L_MAR, rightMargin=R_MAR,
+                     topMargin=T_MAR, bottomMargin=B_MAR)
+        c.build(list(s) + ([Spacer(1, filler_pts)] if filler_pts else []))
+        return c.pg
+
+    base_pages = count_pages(story)
+
+    lo, hi = 0.0, float(USABLE_H)
+    for _ in range(8):           # 8 iterations → ~2pt precision
+        mid = (lo + hi) / 2
+        if count_pages(story, mid) <= base_pages:
+            lo = mid
+        else:
+            hi = mid
+
+    final_story = list(story) + [Spacer(1, lo)]
+
+    doc = SimpleDocTemplate(buf, pagesize=letter,
+        leftMargin=L_MAR, rightMargin=R_MAR,
+        topMargin=T_MAR, bottomMargin=B_MAR + 22)   # room for footer line
+    doc.build(final_story, onFirstPage=draw_footer, onLaterPages=draw_footer)
     buf.seek(0)
     return buf
 
 
 # ── UI ────────────────────────────────────────────────────────────────
 
-st.markdown("""
+_b64 = logo_b64()
+_logo_tag = f'<img src="data:image/png;base64,{_b64}" style="height:52px;filter:brightness(0) invert(1);"/>' if _b64 else "📊"
+st.markdown(f"""
 <div class="mc-header">
   <div class="mc-header-left">
-    <h1>📊 Equity Tearsheet Generator</h1>
-    <p>Enter any ticker symbol to generate a full equity tearsheet with PDF export</p>
+    {_logo_tag}
+    <p style="margin-top:10px;">Enter any ticker symbol to generate a full equity tearsheet with PDF export</p>
   </div>
   <div class="mc-header-right">
-    <b>Manole Capital Management</b><br/>
+    <b>Equity Tearsheet Generator</b><br/>
     Fintech Research Tool<br/>
     Powered by Yahoo Finance
   </div>
