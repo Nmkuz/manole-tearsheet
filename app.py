@@ -13,11 +13,13 @@ from reportlab.platypus import (
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 
-LOGO_PATH = os.path.join(os.path.dirname(__file__), "logo.png")
+LOGO_PATH       = os.path.join(os.path.dirname(__file__), "logo.png")
+LOGO_WHITE_PATH = os.path.join(os.path.dirname(__file__), "logo_white.png")
 
-def logo_b64():
-    if os.path.exists(LOGO_PATH):
-        with open(LOGO_PATH, "rb") as f:
+def logo_b64(white=False):
+    path = LOGO_WHITE_PATH if white else LOGO_PATH
+    if os.path.exists(path):
+        with open(path, "rb") as f:
             return base64.b64encode(f.read()).decode()
     return None
 
@@ -557,8 +559,8 @@ def build_pdf(d):
 
 # ── UI ────────────────────────────────────────────────────────────────
 
-_b64 = logo_b64()
-_logo_tag = f'<img src="data:image/png;base64,{_b64}" style="height:52px;filter:brightness(0) invert(1);"/>' if _b64 else "📊"
+_b64 = logo_b64(white=True)
+_logo_tag = f'<img src="data:image/png;base64,{_b64}" style="height:52px;"/>' if _b64 else "📊"
 st.markdown(f"""
 <div class="mc-header">
   <div class="mc-header-left">
