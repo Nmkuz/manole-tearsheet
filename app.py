@@ -529,7 +529,9 @@ def build_pdf(d):
 
     # ── binary search: max filler that keeps same page count ─────────
     class _Counter(SimpleDocTemplate):
-        pg = 0
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.pg = 0
         def handle_pageEnd(self):
             self.pg += 1
             super().handle_pageEnd()
