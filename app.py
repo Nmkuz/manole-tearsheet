@@ -510,6 +510,11 @@ def build_pdf(d):
             s.append(Paragraph(d["desc"], S_desc))
         s.append(Spacer(1, 10))
 
+        # filler pushes the last section down toward the bottom margin,
+        # so the page looks full instead of trailing off with blank space
+        if extra_pts:
+            s.append(Spacer(1, extra_pts))
+
         # resources
         quartr  = f"https://web.quartr.com/search?query={d['ticker']}"
         sec_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={d['ticker']}&type=10-K&owner=include&count=10"
@@ -522,9 +527,6 @@ def build_pdf(d):
         if d["website"]:
             res.append(("Investor Relations", f'<link href="{d["website"]}">{d["website"]}</link>'))
         s.append(one_col(res))
-
-        if extra_pts:
-            s.append(Spacer(1, extra_pts))
         return s
 
     # ── binary search: max filler that keeps same page count ─────────
