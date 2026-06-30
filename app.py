@@ -11,121 +11,301 @@ from reportlab.platypus import (
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 
-# ── page config ───────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Manole Capital — Equity Tearsheet",
     page_icon="📊",
-    layout="centered",
+    layout="wide",
 )
 
-# ── styling ───────────────────────────────────────────────────────────
 st.markdown("""
 <style>
-  [data-testid="stAppViewContainer"] { background: #f7f9fc; }
-  [data-testid="stMetricValue"] { color: #0D1E3F !important; }
-  [data-testid="stMetricLabel"] { color: #555 !important; }
-  .header-block {
+  /* force light base */
+  html, body, [data-testid="stAppViewContainer"], [data-testid="stMain"] {
+    background-color: #f0f4f9 !important;
+    color: #0D1E3F !important;
+  }
+  [data-testid="stSidebar"] { display: none; }
+  [data-testid="stToolbar"] { display: none; }
+
+  /* header */
+  .mc-header {
+    background: linear-gradient(135deg, #0D1E3F 0%, #1A3A6B 100%);
+    border-radius: 12px;
+    padding: 32px 40px;
+    margin-bottom: 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .mc-header-left h1 {
+    color: #ffffff;
+    font-size: 1.9rem;
+    font-weight: 700;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.02em;
+  }
+  .mc-header-left p { color: #8C9DB5; margin: 0; font-size: 0.92rem; }
+  .mc-header-right {
+    text-align: right;
+    color: #8C9DB5;
+    font-size: 0.82rem;
+    line-height: 1.7;
+  }
+  .mc-header-right b { color: #ccd6e8; }
+
+  /* company title bar */
+  .co-bar {
     background: #0D1E3F;
     border-radius: 10px;
-    padding: 28px 32px 20px 32px;
-    margin-bottom: 28px;
+    padding: 18px 24px;
+    margin: 0 0 20px 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
   }
-  .header-block h1 { color: white; font-size: 1.7rem; margin: 0 0 4px 0; }
-  .header-block p  { color: #8C9DB5; margin: 0; font-size: 0.95rem; }
-  .metric-card {
-    background: white;
-    border-radius: 8px;
-    padding: 14px 18px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.07);
-    margin-bottom: 4px;
-  }
-  .metric-label { color: #8C9DB5; font-size: 0.78rem; margin-bottom: 2px; }
-  .metric-value { color: #0D1E3F; font-size: 1.15rem; font-weight: 700; }
-  .section-title {
+  .co-bar-name { color: #fff; font-size: 1.35rem; font-weight: 700; }
+  .co-bar-meta { color: #8C9DB5; font-size: 0.83rem; margin-top: 3px; }
+  .co-bar-price { text-align: right; }
+  .co-bar-price .price { color: #fff; font-size: 1.6rem; font-weight: 700; }
+  .co-bar-price .perf { font-size: 0.85rem; margin-top: 2px; }
+  .pos { color: #4CAF82; }
+  .neg { color: #E05252; }
+
+  /* section label */
+  .sec-label {
     color: #1A55A3;
-    font-size: 0.78rem;
+    font-size: 0.72rem;
     font-weight: 700;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
-    border-bottom: 1.5px solid #1A55A3;
-    padding-bottom: 4px;
-    margin: 22px 0 12px 0;
+    border-bottom: 2px solid #1A55A3;
+    padding-bottom: 5px;
+    margin: 24px 0 14px 0;
   }
-  .green { color: #1A7A4A; }
-  .red   { color: #B22222; }
-  .desc  { color: #333; font-size: 0.88rem; line-height: 1.65; }
-  .stDownloadButton > button {
+
+  /* metric cards */
+  .metric-grid {
+    display: grid;
+    gap: 10px;
+  }
+  .metric-grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .metric-grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .metric-grid-5 { grid-template-columns: repeat(5, 1fr); }
+  .mcard {
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 3px rgba(13,30,63,0.08);
+    border-left: 3px solid #1A55A3;
+  }
+  .mcard-label {
+    color: #8C9DB5;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .mcard-value {
+    color: #0D1E3F;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .mcard-value.pos { color: #1A7A4A; }
+  .mcard-value.neg { color: #B22222; }
+
+  /* description */
+  .co-desc {
+    background: #fff;
+    border-radius: 8px;
+    padding: 16px 20px;
+    color: #2c3e5c;
+    font-size: 0.87rem;
+    line-height: 1.7;
+    box-shadow: 0 1px 3px rgba(13,30,63,0.06);
+  }
+
+  /* resource links */
+  .res-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 4px;
+  }
+  .res-card {
+    background: #fff;
+    border-radius: 8px;
+    padding: 14px 16px;
+    box-shadow: 0 1px 3px rgba(13,30,63,0.08);
+  }
+  .res-card-label {
+    color: #8C9DB5;
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+  .res-card a {
+    color: #1A55A3;
+    font-size: 0.82rem;
+    font-weight: 600;
+    text-decoration: none;
+    word-break: break-all;
+  }
+  .res-card a:hover { text-decoration: underline; }
+
+  /* input & button */
+  [data-testid="stTextInput"] input {
+    border: 2px solid #d0daea !important;
+    border-radius: 8px !important;
+    padding: 12px 16px !important;
+    font-size: 1rem !important;
+    background: #fff !important;
+    color: #0D1E3F !important;
+  }
+  [data-testid="stTextInput"] input:focus {
+    border-color: #1A55A3 !important;
+    box-shadow: 0 0 0 3px rgba(26,85,163,0.15) !important;
+  }
+  [data-testid="stButton"] > button {
+    background: #1A55A3 !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 12px 32px !important;
+    font-size: 0.95rem !important;
+    font-weight: 600 !important;
+    width: 100% !important;
+    transition: background 0.2s !important;
+  }
+  [data-testid="stButton"] > button:hover {
+    background: #0D3D82 !important;
+  }
+  [data-testid="stDownloadButton"] > button {
     background: #0D1E3F !important;
     color: white !important;
     border: none !important;
     border-radius: 8px !important;
-    padding: 10px 28px !important;
-    font-size: 1rem !important;
-    width: 100%;
-    margin-top: 8px;
+    font-weight: 600 !important;
+    width: 100% !important;
+  }
+
+  /* divider */
+  hr { border: none; border-top: 1px solid #dde6f0; margin: 28px 0; }
+
+  /* footer */
+  .mc-footer {
+    text-align: center;
+    color: #8C9DB5;
+    font-size: 0.75rem;
+    margin-top: 40px;
+    padding-top: 20px;
+    border-top: 1px solid #dde6f0;
   }
 </style>
 """, unsafe_allow_html=True)
 
+
 # ── helpers ───────────────────────────────────────────────────────────
+
 def fmt(n, prefix="$"):
-    if n is None: return "N/A"
+    if n is None: return "—"
     try:
         n = float(n)
-        if abs(n) >= 1e9: return f"{prefix}{n/1e9:.2f}B"
-        if abs(n) >= 1e6: return f"{prefix}{n/1e6:.2f}M"
+        if abs(n) >= 1e12: return f"{prefix}{n/1e12:.2f}T"
+        if abs(n) >= 1e9:  return f"{prefix}{n/1e9:.2f}B"
+        if abs(n) >= 1e6:  return f"{prefix}{n/1e6:.2f}M"
         return f"{prefix}{n:,.0f}"
-    except: return "N/A"
+    except: return "—"
 
-def pct(n):
-    if n is None: return "N/A", None
+def pct_str(n):
+    if n is None: return "—", None
     try: v = float(n); return f"{v*100:.1f}%", v
-    except: return "N/A", None
+    except: return "—", None
 
 def mul(n):
-    if n is None: return "N/A"
-    try: return f"{float(n):.1f}x"
-    except: return "N/A"
+    if n is None: return "—"
+    try:
+        v = float(n)
+        if v < 0: return "N/M"
+        return f"{v:.1f}x"
+    except: return "—"
 
-def colored_pct(n):
-    text, v = pct(n)
-    if v is None: return text, ""
-    css = "green" if v >= 0 else "red"
-    return text, css
+def color_class(v):
+    if v is None: return ""
+    return "pos" if float(v) >= 0 else "neg"
 
+def card(label, value, css_class=""):
+    return f'<div class="mcard"><div class="mcard-label">{label}</div><div class="mcard-value {css_class}">{value}</div></div>'
+
+def cards(*items):
+    n = len(items)
+    cls = f"metric-grid-{min(n, 5)}"
+    inner = "".join(card(l, v, c) for l, v, c in items)
+    return f'<div class="metric-grid {cls}">{inner}</div>'
+
+
+# ── data fetch ────────────────────────────────────────────────────────
+
+@st.cache_data(ttl=3600, show_spinner=False)
 def fetch(sym):
     t = yf.Ticker(sym)
     i = t.info
-    if not i.get("longName"):
-        raise ValueError(f"No data found for '{sym}'. Check the ticker and try again.")
+    if not i or not i.get("longName"):
+        raise ValueError(f"Ticker '{sym}' not found. Please check the symbol and try again.")
+
+    # try multiple price fields
+    price = (i.get("currentPrice") or i.get("regularMarketPrice")
+             or i.get("previousClose") or i.get("ask"))
+
+    # 52w high/low
+    hi52  = i.get("fiftyTwoWeekHigh")
+    lo52  = i.get("fiftyTwoWeekLow")
+
     return {
         "name":     i.get("longName", sym),
-        "sector":   i.get("sector", "N/A"),
-        "industry": i.get("industry", "N/A"),
-        "website":  i.get("website", "N/A"),
+        "sector":   i.get("sector") or "—",
+        "industry": i.get("industry") or "—",
+        "website":  i.get("website") or "",
         "desc":     i.get("longBusinessSummary", ""),
-        "price":    i.get("currentPrice") or i.get("regularMarketPrice"),
+        "exchange": i.get("exchange") or "",
+        "currency": i.get("currency") or "USD",
+        "employees":i.get("fullTimeEmployees"),
+        "price":    price,
+        "hi52":     hi52,
+        "lo52":     lo52,
         "mktcap":   i.get("marketCap"),
         "cash":     i.get("totalCash"),
         "debt":     i.get("totalDebt"),
         "ev":       i.get("enterpriseValue"),
         "perf52":   i.get("52WeekChange"),
         "beta":     i.get("beta"),
+        "shares":   i.get("sharesOutstanding"),
+        "div_yield":i.get("dividendYield"),
         "rev":      i.get("totalRevenue"),
         "rev_g":    i.get("revenueGrowth"),
+        "gross_m":  i.get("grossMargins"),
         "ebitda":   i.get("ebitda"),
         "ebitda_m": i.get("ebitdaMargins"),
+        "net_m":    i.get("profitMargins"),
         "ni":       i.get("netIncomeToCommon"),
         "eps":      i.get("trailingEps"),
         "eps_g":    i.get("earningsGrowth"),
+        "fcf":      i.get("freeCashflow"),
         "pe":       i.get("trailingPE"),
         "fpe":      i.get("forwardPE"),
+        "pb":       i.get("priceToBook"),
+        "ps":       i.get("priceToSalesTrailing12Months"),
         "ev_ebt":   i.get("enterpriseToEbitda"),
         "ev_rev":   i.get("enterpriseToRevenue"),
         "ticker":   sym.upper(),
+        "generated":datetime.now().strftime("%B %d, %Y  %I:%M %p"),
     }
 
-# ── PDF builder (same as tearsheet.py) ───────────────────────────────
+
+# ── PDF builder ───────────────────────────────────────────────────────
+
 def build_pdf(d):
     buf = io.BytesIO()
 
@@ -138,38 +318,36 @@ def build_pdf(d):
     GREEN  = colors.HexColor("#1A7A4A")
     RED    = colors.HexColor("#B22222")
 
-    def style(name, **kw):
-        d = dict(fontName="Helvetica", fontSize=9, leading=13,
-                 textColor=BLACK, spaceAfter=0, spaceBefore=0)
-        d.update(kw)
-        return ParagraphStyle(name, **d)
+    def sty(name, **kw):
+        base = dict(fontName="Helvetica", fontSize=9, leading=13,
+                    textColor=BLACK, spaceAfter=0, spaceBefore=0)
+        base.update(kw)
+        return ParagraphStyle(name, **base)
 
-    S_co    = style("co",   fontName="Helvetica-Bold", fontSize=18, textColor=WHITE, leading=22)
-    S_sec   = style("sec",  fontName="Helvetica-Bold", fontSize=8, textColor=BLUE, leading=10, spaceBefore=4)
-    S_lbl   = style("lbl",  fontSize=8.5, textColor=SILVER)
-    S_val   = style("val",  fontName="Helvetica-Bold", fontSize=9, textColor=BLACK)
-    S_desc  = style("desc", fontSize=8.5, leading=13, textColor=BLACK)
-    S_foot  = style("foot", fontSize=7, textColor=SILVER, alignment=TA_CENTER)
+    S_co   = sty("co",  fontName="Helvetica-Bold", fontSize=17, textColor=WHITE, leading=21)
+    S_sec  = sty("sec", fontName="Helvetica-Bold", fontSize=7.5, textColor=BLUE, leading=10, spaceBefore=2)
+    S_lbl  = sty("lbl", fontSize=8, textColor=SILVER)
+    S_val  = sty("val", fontName="Helvetica-Bold", fontSize=8.5, textColor=BLACK)
+    S_desc = sty("dsc", fontSize=8, leading=12.5, textColor=BLACK)
+    S_foot = sty("ft",  fontSize=6.5, textColor=SILVER, alignment=TA_CENTER)
 
-    def color_pct(raw):
-        if raw is None: return "N/A"
+    def cpct(raw):
+        if raw is None: return "—"
         try:
             v = float(raw)
-            c = GREEN if v >= 0 else RED
-            col = c.hexval()[2:]
+            col = GREEN.hexval()[2:] if v >= 0 else RED.hexval()[2:]
             return f'<font color="#{col}">{v*100:.1f}%</font>'
-        except: return "N/A"
+        except: return "—"
 
     def two_col(left, right):
-        def col(rows):
-            return [[Paragraph(k, S_lbl), Paragraph(v, S_val)] for k, v in rows]
-        L, R = col(left), col(right)
-        combined = []
+        L = [[Paragraph(k, S_lbl), Paragraph(v, S_val)] for k, v in left]
+        R = [[Paragraph(k, S_lbl), Paragraph(v, S_val)] for k, v in right]
+        rows = []
         for i in range(max(len(L), len(R))):
-            lr = L[i] if i < len(L) else [Paragraph("", S_lbl), Paragraph("", S_val)]
-            rr = R[i] if i < len(R) else [Paragraph("", S_lbl), Paragraph("", S_val)]
-            combined.append(lr + [Paragraph("", S_lbl)] + rr)
-        t = Table(combined, colWidths=[1.6*inch, 1.4*inch, 0.3*inch, 1.6*inch, 1.4*inch])
+            l = L[i] if i < len(L) else [Paragraph("", S_lbl), Paragraph("", S_val)]
+            r = R[i] if i < len(R) else [Paragraph("", S_lbl), Paragraph("", S_val)]
+            rows.append(l + [Paragraph("", S_lbl)] + r)
+        t = Table(rows, colWidths=[1.55*inch, 1.35*inch, 0.25*inch, 1.55*inch, 1.35*inch])
         t.setStyle(TableStyle([
             ("VALIGN",        (0,0),(-1,-1),"MIDDLE"),
             ("TOPPADDING",    (0,0),(-1,-1),3),
@@ -182,7 +360,7 @@ def build_pdf(d):
 
     def one_col(rows):
         data = [[Paragraph(k, S_lbl), Paragraph(v, S_val)] for k, v in rows]
-        t = Table(data, colWidths=[2.2*inch, 2.8*inch])
+        t = Table(data, colWidths=[2.1*inch, 3.95*inch])
         t.setStyle(TableStyle([
             ("VALIGN",        (0,0),(-1,-1),"MIDDLE"),
             ("TOPPADDING",    (0,0),(-1,-1),3),
@@ -192,28 +370,25 @@ def build_pdf(d):
         ]))
         return t
 
-    def sec(title):
-        return [
-            HRFlowable(width="100%", thickness=0.5, color=BLUE, spaceAfter=3),
-            Paragraph(title.upper(), S_sec),
-        ]
+    def section(title):
+        return [HRFlowable(width="100%", thickness=0.5, color=BLUE, spaceAfter=3),
+                Paragraph(title.upper(), S_sec)]
 
     doc = SimpleDocTemplate(buf, pagesize=letter,
-        leftMargin=0.65*inch, rightMargin=0.65*inch,
-        topMargin=0.5*inch, bottomMargin=0.65*inch)
+        leftMargin=0.6*inch, rightMargin=0.6*inch,
+        topMargin=0.45*inch, bottomMargin=0.55*inch)
 
     story = []
 
+    # header
+    sub = f"{d['ticker']}  ·  {d['sector']}  ·  {d['industry']}"
     hdr = [[
+        Paragraph(f"{d['name']}<br/><font size='10' color='#8C9DB5'>{sub}</font>", S_co),
         Paragraph(
-            f"{d['name']}<br/>"
-            f"<font size='11' color='#8C9DB5'>{d['ticker']}  ·  {d['sector']}  ·  {d['industry']}</font>",
-            S_co),
-        Paragraph(
-            f"<b>Manole Capital Management</b><br/>Equity Tearsheet<br/>{datetime.now().strftime('%B %d, %Y')}",
-            style("hr", fontSize=8, textColor=SILVER, alignment=TA_RIGHT, leading=13)),
+            f"<b>Manole Capital Management</b><br/>Equity Tearsheet<br/>{d['generated']}",
+            sty("r", fontSize=8, textColor=SILVER, alignment=TA_RIGHT, leading=13)),
     ]]
-    ht = Table(hdr, colWidths=[4.4*inch, 2.3*inch])
+    ht = Table(hdr, colWidths=[4.5*inch, 2.4*inch])
     ht.setStyle(TableStyle([
         ("BACKGROUND",    (0,0),(-1,-1),NAVY),
         ("VALIGN",        (0,0),(-1,-1),"MIDDLE"),
@@ -222,138 +397,252 @@ def build_pdf(d):
         ("LEFTPADDING",   (0,0),(0,-1),14),
         ("RIGHTPADDING",  (1,0),(1,-1),14),
     ]))
-    story.append(ht)
-    story.append(Spacer(1, 10))
+    story += [ht, Spacer(1, 10)]
 
-    story += sec("Market Data & Valuation")
+    # market data + valuation
+    story += section("Market Data & Valuation")
     story.append(Spacer(1, 4))
-    beta_str = f"{float(d['beta']):.2f}" if d["beta"] else "N/A"
+    beta = f"{float(d['beta']):.2f}" if d["beta"] else "—"
+    hi52 = fmt(d["hi52"], prefix="$") if d["hi52"] else "—"
+    lo52 = fmt(d["lo52"], prefix="$") if d["lo52"] else "—"
+    div_y = f"{float(d['div_yield'])*100:.2f}%" if d["div_yield"] else "—"
     story.append(two_col(
-        [("Current Price", fmt(d["price"])),
-         ("Market Cap",    fmt(d["mktcap"])),
+        [("Current Price",    fmt(d["price"])),
+         ("Market Cap",       fmt(d["mktcap"])),
          ("Enterprise Value", fmt(d["ev"])),
-         ("Cash & Equiv.", fmt(d["cash"])),
-         ("Total Debt",    fmt(d["debt"])),
-         ("52-Week Return", color_pct(d["perf52"])),
-         ("Beta",          beta_str)],
-        [("P/E (TTM)",  mul(d["pe"])),
-         ("P/E (Fwd)",  mul(d["fpe"])),
-         ("EV/EBITDA",  mul(d["ev_ebt"])),
-         ("EV/Revenue", mul(d["ev_rev"]))],
+         ("Cash & Equiv.",    fmt(d["cash"])),
+         ("Total Debt",       fmt(d["debt"])),
+         ("52-Week Return",   cpct(d["perf52"])),
+         ("52-Week High",     hi52),
+         ("52-Week Low",      lo52),
+         ("Beta",             beta),
+         ("Dividend Yield",   div_y)],
+        [("P/E (TTM)",    mul(d["pe"])),
+         ("P/E (Fwd)",    mul(d["fpe"])),
+         ("EV/EBITDA",    mul(d["ev_ebt"])),
+         ("EV/Revenue",   mul(d["ev_rev"])),
+         ("Price/Book",   mul(d["pb"])),
+         ("Price/Sales",  mul(d["ps"]))],
     ))
     story.append(Spacer(1, 10))
 
-    story += sec("Financials (TTM)")
+    # financials
+    story += section("Financials (TTM)")
     story.append(Spacer(1, 4))
+    gm  = f"{float(d['gross_m'])*100:.1f}%"  if d["gross_m"]  else "—"
+    em  = f"{float(d['ebitda_m'])*100:.1f}%" if d["ebitda_m"] else "—"
+    nm  = f"{float(d['net_m'])*100:.1f}%"    if d["net_m"]    else "—"
+    eps = f"${float(d['eps']):.2f}"           if d["eps"]      else "—"
     story.append(two_col(
-        [("Revenue",       fmt(d["rev"])),
-         ("Revenue Growth",color_pct(d["rev_g"])),
-         ("EBITDA",        fmt(d["ebitda"])),
-         ("EBITDA Margin", f"{float(d['ebitda_m'])*100:.1f}%" if d["ebitda_m"] else "N/A")],
-        [("Net Income", fmt(d["ni"])),
-         ("EPS (TTM)", f"${float(d['eps']):.2f}" if d["eps"] else "N/A"),
-         ("EPS Growth", color_pct(d["eps_g"]))],
+        [("Revenue",        fmt(d["rev"])),
+         ("Revenue Growth", cpct(d["rev_g"])),
+         ("Gross Margin",   gm),
+         ("EBITDA",         fmt(d["ebitda"])),
+         ("EBITDA Margin",  em),
+         ("Net Income",     fmt(d["ni"])),
+         ("Net Margin",     nm),
+         ("Free Cash Flow", fmt(d["fcf"])),
+         ("EPS (TTM)",      eps),
+         ("EPS Growth",     cpct(d["eps_g"]))],
+        [],
     ))
     story.append(Spacer(1, 10))
 
-    story += sec("Business")
+    # business
+    story += section("Business")
     story.append(Spacer(1, 4))
-    story.append(one_col([
-        ("Sector",   d["sector"]),
-        ("Industry", d["industry"]),
-        ("Website",  f'<link href="{d["website"]}">{d["website"]}</link>'),
-    ]))
+    emp = f"{int(d['employees']):,}" if d["employees"] else "—"
+    rows = [("Sector", d["sector"]), ("Industry", d["industry"]), ("Employees", emp)]
+    if d["website"]:
+        rows.append(("Website", f'<link href="{d["website"]}">{d["website"]}</link>'))
+    story.append(one_col(rows))
     story.append(Spacer(1, 6))
     if d["desc"]:
         story.append(Paragraph(d["desc"], S_desc))
     story.append(Spacer(1, 10))
 
-    quartr = f"https://web.quartr.com/search?query={d['ticker']}"
-    sec_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={d['ticker']}&type=10-K&dateb=&owner=include&count=10"
-    story += sec("Resources")
+    # resources
+    quartr  = f"https://web.quartr.com/search?query={d['ticker']}"
+    sec_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={d['ticker']}&type=10-K&owner=include&count=10"
+    story += section("Resources")
     story.append(Spacer(1, 4))
-    story.append(one_col([
-        ("Quartr (Earnings Calls)", f'<link href="{quartr}">{quartr}</link>'),
-        ("SEC Filings (10-K / 10-Q)", f'<link href="{sec_url}">EDGAR — {d["ticker"]}</link>'),
-        ("Investor Relations", f'<link href="{d["website"]}">{d["website"]}</link>'),
-    ]))
-    story.append(Spacer(1, 14))
-
-    story.append(HRFlowable(width="100%", thickness=0.4, color=SILVER))
-    story.append(Spacer(1, 4))
-    story.append(Paragraph(
-        "Data sourced from Yahoo Finance. For informational purposes only — not investment advice. "
-        "Generated by Manole Capital intern tearsheet tool.",
-        S_foot))
+    res = [("Quartr — Earnings Calls & Transcripts",
+            f'<link href="{quartr}">{quartr}</link>'),
+           ("SEC Filings — 10-K / 10-Q",
+            f'<link href="{sec_url}">EDGAR Search: {d["ticker"]}</link>')]
+    if d["website"]:
+        res.append(("Investor Relations", f'<link href="{d["website"]}">{d["website"]}</link>'))
+    story.append(one_col(res))
+    story += [Spacer(1, 14),
+              HRFlowable(width="100%", thickness=0.4, color=SILVER),
+              Spacer(1, 4),
+              Paragraph("Data sourced from Yahoo Finance. For informational purposes only — not investment advice. "
+                        "Manole Capital Management intern research tool.", S_foot)]
 
     doc.build(story)
     buf.seek(0)
     return buf
 
+
 # ── UI ────────────────────────────────────────────────────────────────
+
 st.markdown("""
-<div class="header-block">
-  <h1>📊 Equity Tearsheet Generator</h1>
-  <p>Manole Capital Management &nbsp;·&nbsp; Enter any ticker to generate a tearsheet</p>
+<div class="mc-header">
+  <div class="mc-header-left">
+    <h1>📊 Equity Tearsheet Generator</h1>
+    <p>Enter any ticker symbol to generate a full equity tearsheet with PDF export</p>
+  </div>
+  <div class="mc-header-right">
+    <b>Manole Capital Management</b><br/>
+    Fintech Research Tool<br/>
+    Powered by Yahoo Finance
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
-ticker_input = st.text_input(
-    "", placeholder="e.g. V, MA, PYPL, ASTS",
-    label_visibility="collapsed"
-)
-
-generate = st.button("Generate Tearsheet", use_container_width=True)
+col_in, col_btn = st.columns([4, 1])
+with col_in:
+    ticker_input = st.text_input("", placeholder="Enter ticker(s) — e.g.  V   MA   PYPL   ASTS",
+                                 label_visibility="collapsed")
+with col_btn:
+    generate = st.button("Generate", use_container_width=True)
 
 if generate and ticker_input.strip():
     tickers = [t.strip().upper() for t in ticker_input.replace(",", " ").split() if t.strip()]
 
     for sym in tickers:
-        with st.spinner(f"Fetching data for {sym}..."):
+        with st.spinner(f"Fetching {sym}..."):
             try:
                 d = fetch(sym)
             except Exception as e:
-                st.error(str(e))
+                st.error(f"⚠️ {e}")
                 continue
 
-        st.markdown(f"<div class='section-title'>Market Data &amp; Valuation — {d['name']} ({d['ticker']})</div>", unsafe_allow_html=True)
+        perf_text, perf_val = pct_str(d["perf52"])
+        perf_class = color_class(perf_val) if perf_val is not None else ""
 
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Price",        fmt(d["price"]))
-        c2.metric("Market Cap",   fmt(d["mktcap"]))
-        c3.metric("Ent. Value",   fmt(d["ev"]))
-        c4.metric("52-Wk Return", pct(d["perf52"])[0])
+        # company title bar
+        st.markdown(f"""
+        <div class="co-bar">
+          <div>
+            <div class="co-bar-name">{d['name']} &nbsp;<span style="font-size:1rem;color:#8C9DB5;">({d['ticker']})</span></div>
+            <div class="co-bar-meta">{d['sector']} &nbsp;·&nbsp; {d['industry']} &nbsp;·&nbsp; {d['exchange']}</div>
+          </div>
+          <div class="co-bar-price">
+            <div class="price">{fmt(d['price'])}</div>
+            <div class="perf {perf_class}">52-Wk &nbsp;{perf_text}</div>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
-        c5, c6, c7, c8 = st.columns(4)
-        c5.metric("Cash",         fmt(d["cash"]))
-        c6.metric("Total Debt",   fmt(d["debt"]))
-        c7.metric("P/E (TTM)",    mul(d["pe"]))
-        c8.metric("EV/EBITDA",    mul(d["ev_ebt"]))
+        # market data
+        st.markdown('<div class="sec-label">Market Data</div>', unsafe_allow_html=True)
+        hi52 = fmt(d["hi52"]) if d["hi52"] else "—"
+        lo52 = fmt(d["lo52"]) if d["lo52"] else "—"
+        div_y = f"{float(d['div_yield'])*100:.2f}%" if d["div_yield"] else "—"
+        beta_s = f"{float(d['beta']):.2f}" if d["beta"] else "—"
+        st.markdown(cards(
+            ("Market Cap",       fmt(d["mktcap"]),   ""),
+            ("Enterprise Value", fmt(d["ev"]),        ""),
+            ("Cash & Equiv.",    fmt(d["cash"]),      ""),
+            ("Total Debt",       fmt(d["debt"]),      ""),
+            ("Free Cash Flow",   fmt(d["fcf"]),       ""),
+        ), unsafe_allow_html=True)
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        st.markdown(cards(
+            ("52-Wk High",    hi52,   ""),
+            ("52-Wk Low",     lo52,   ""),
+            ("Beta",          beta_s, ""),
+            ("Dividend Yield",div_y,  ""),
+            ("Shares Out.",   fmt(d["shares"], prefix=""), ""),
+        ), unsafe_allow_html=True)
 
-        st.markdown("<div class='section-title'>Financials (TTM)</div>", unsafe_allow_html=True)
+        # valuation
+        st.markdown('<div class="sec-label">Valuation</div>', unsafe_allow_html=True)
+        st.markdown(cards(
+            ("P/E (TTM)",   mul(d["pe"]),     ""),
+            ("P/E (Fwd)",   mul(d["fpe"]),    ""),
+            ("EV/EBITDA",   mul(d["ev_ebt"]), ""),
+            ("EV/Revenue",  mul(d["ev_rev"]), ""),
+            ("Price/Book",  mul(d["pb"]),     ""),
+        ), unsafe_allow_html=True)
 
-        c9, c10, c11, c12 = st.columns(4)
-        c9.metric("Revenue",      fmt(d["rev"]))
-        c10.metric("Rev Growth",  pct(d["rev_g"])[0])
-        c11.metric("Net Income",  fmt(d["ni"]))
-        c12.metric("EPS",         f"${float(d['eps']):.2f}" if d["eps"] else "N/A")
+        # financials
+        st.markdown('<div class="sec-label">Financials (TTM)</div>', unsafe_allow_html=True)
+        rev_g_txt, rev_g_val = pct_str(d["rev_g"])
+        eps_g_txt, eps_g_val = pct_str(d["eps_g"])
+        gm  = f"{float(d['gross_m'])*100:.1f}%"  if d["gross_m"]  else "—"
+        em  = f"{float(d['ebitda_m'])*100:.1f}%" if d["ebitda_m"] else "—"
+        nm  = f"{float(d['net_m'])*100:.1f}%"    if d["net_m"]    else "—"
+        eps = f"${float(d['eps']):.2f}"           if d["eps"]      else "—"
+        st.markdown(cards(
+            ("Revenue",       fmt(d["rev"]),  ""),
+            ("Rev. Growth",   rev_g_txt,      color_class(rev_g_val)),
+            ("Gross Margin",  gm,             ""),
+            ("EBITDA Margin", em,             ""),
+            ("Net Margin",    nm,             ""),
+        ), unsafe_allow_html=True)
+        st.markdown("<div style='height:10px'></div>", unsafe_allow_html=True)
+        st.markdown(cards(
+            ("EBITDA",      fmt(d["ebitda"]),  ""),
+            ("Net Income",  fmt(d["ni"]),      ""),
+            ("EPS (TTM)",   eps,               ""),
+            ("EPS Growth",  eps_g_txt,         color_class(eps_g_val)),
+            ("Free CF",     fmt(d["fcf"]),     ""),
+        ), unsafe_allow_html=True)
 
-        st.markdown("<div class='section-title'>Business</div>", unsafe_allow_html=True)
-        st.markdown(f"<p class='desc'><b>{d['sector']}</b> · {d['industry']}<br/><br/>{d['desc']}</p>", unsafe_allow_html=True)
+        # business
+        st.markdown('<div class="sec-label">Business</div>', unsafe_allow_html=True)
+        emp = f"{int(d['employees']):,} employees" if d["employees"] else ""
+        st.markdown(f"""
+        <div class="co-desc">
+          <b>{d['sector']}</b> · {d['industry']}{"  ·  " + emp if emp else ""}<br/><br/>
+          {d['desc'] or "No description available."}
+        </div>
+        """, unsafe_allow_html=True)
+
+        # resources
+        quartr  = f"https://web.quartr.com/search?query={d['ticker']}"
+        sec_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={d['ticker']}&type=10-K&owner=include&count=10"
+        ir_url  = d["website"] or "#"
+        st.markdown('<div class="sec-label">Resources</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+        <div class="res-grid">
+          <div class="res-card">
+            <div class="res-card-label">Quartr — Earnings &amp; Transcripts</div>
+            <a href="{quartr}" target="_blank">web.quartr.com → {d['ticker']}</a>
+          </div>
+          <div class="res-card">
+            <div class="res-card-label">SEC Filings — 10-K / 10-Q</div>
+            <a href="{sec_url}" target="_blank">EDGAR Search: {d['ticker']}</a>
+          </div>
+          <div class="res-card">
+            <div class="res-card-label">Investor Relations</div>
+            <a href="{ir_url}" target="_blank">{d['website'] or '—'}</a>
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
         # PDF download
-        st.markdown("<div class='section-title'>Download</div>", unsafe_allow_html=True)
-        pdf_buf = build_pdf(d)
+        st.markdown('<div class="sec-label" style="margin-top:24px">Download</div>', unsafe_allow_html=True)
         date_str = datetime.now().strftime("%Y%m%d")
+        pdf_buf = build_pdf(d)
         st.download_button(
-            label=f"⬇ Download {sym} Tearsheet PDF",
+            label=f"⬇  Download {sym} Tearsheet PDF",
             data=pdf_buf,
             file_name=f"{sym}_tearsheet_{date_str}.pdf",
             mime="application/pdf",
             key=f"dl_{sym}",
         )
 
-        st.divider()
+        st.markdown("<hr>", unsafe_allow_html=True)
 
 elif generate:
-    st.warning("Please enter a ticker symbol.")
+    st.warning("Please enter at least one ticker symbol.")
+
+st.markdown("""
+<div class="mc-footer">
+  Data sourced from Yahoo Finance · For informational purposes only · Not investment advice<br/>
+  Manole Capital Management — Intern Research Tool
+</div>
+""", unsafe_allow_html=True)
