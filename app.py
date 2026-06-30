@@ -22,6 +22,8 @@ st.set_page_config(
 st.markdown("""
 <style>
   [data-testid="stAppViewContainer"] { background: #f7f9fc; }
+  [data-testid="stMetricValue"] { color: #0D1E3F !important; }
+  [data-testid="stMetricLabel"] { color: #555 !important; }
   .header-block {
     background: #0D1E3F;
     border-radius: 10px;
