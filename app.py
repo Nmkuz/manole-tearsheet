@@ -413,7 +413,7 @@ def build_pdf(d):
         canvas.restoreState()
 
     # ── story factory — called fresh each time to avoid stateful flowable reuse ──
-    def make_story(extra_pts=0):
+    def make_story():
         s = []
 
         # header — logo left, company info right
@@ -510,11 +510,6 @@ def build_pdf(d):
             s.append(Paragraph(d["desc"], S_desc))
         s.append(Spacer(1, 10))
 
-        # filler pushes the last section down toward the bottom margin,
-        # so the page looks full instead of trailing off with blank space
-        if extra_pts:
-            s.append(Spacer(1, extra_pts))
-
         # resources
         quartr  = f"https://web.quartr.com/search?query={d['ticker']}"
         sec_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={d['ticker']}&type=10-K&owner=include&count=10"
@@ -529,37 +524,10 @@ def build_pdf(d):
         s.append(one_col(res))
         return s
 
-    # ── binary search: max filler that keeps same page count ─────────
-    class _Counter(SimpleDocTemplate):
-        def __init__(self, *args, **kwargs):
-            super().__init__(*args, **kwargs)
-            self.pg = 0
-        def handle_pageEnd(self):
-            self.pg += 1
-            super().handle_pageEnd()
-
-    def count_pages(filler_pts=0):
-        tmp = io.BytesIO()
-        c = _Counter(tmp, pagesize=letter,
-                     leftMargin=L_MAR, rightMargin=R_MAR,
-                     topMargin=T_MAR, bottomMargin=B_MAR + 22)
-        c.build(make_story(filler_pts))
-        return c.pg
-
-    base_pages = count_pages()
-
-    lo, hi = 0.0, float(USABLE_H)
-    for _ in range(8):
-        mid = (lo + hi) / 2
-        if count_pages(mid) <= base_pages:
-            lo = mid
-        else:
-            hi = mid
-
     doc = SimpleDocTemplate(buf, pagesize=letter,
         leftMargin=L_MAR, rightMargin=R_MAR,
         topMargin=T_MAR, bottomMargin=B_MAR + 22)
-    doc.build(make_story(lo), onFirstPage=draw_footer, onLaterPages=draw_footer)
+    doc.build(make_story(), onFirstPage=draw_footer, onLaterPages=draw_footer)
     buf.seek(0)
     return buf
 
