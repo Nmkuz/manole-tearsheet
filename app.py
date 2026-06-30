@@ -559,13 +559,17 @@ def build_pdf(d):
 
 # ── UI ────────────────────────────────────────────────────────────────
 
-_b64 = logo_b64(white=True)
-_logo_tag = f'<img src="data:image/png;base64,{_b64}" style="height:52px;"/>' if _b64 else "📊"
+_b64 = logo_b64(white=False)
+_logo_tag = (
+    f'<div style="background:white;border-radius:8px;padding:8px 12px;display:inline-block;margin-bottom:10px;">'
+    f'<img src="data:image/png;base64,{_b64}" style="height:44px;display:block;"/>'
+    f'</div>'
+) if _b64 else "<span style='color:white;font-size:1.5rem;font-weight:700;'>MCM</span>"
 st.markdown(f"""
 <div class="mc-header">
   <div class="mc-header-left">
     {_logo_tag}
-    <p style="margin-top:10px;">Enter any ticker symbol to generate a full equity tearsheet with PDF export</p>
+    <p style="margin:6px 0 0 0;">Enter any ticker symbol to generate a full equity tearsheet with PDF export</p>
   </div>
   <div class="mc-header-right">
     <b>Equity Tearsheet Generator</b><br/>
