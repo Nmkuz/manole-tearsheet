@@ -398,116 +398,6 @@ def build_pdf(d):
         leftMargin=L_MAR, rightMargin=R_MAR,
         topMargin=T_MAR, bottomMargin=B_MAR)
 
-    story = []
-
-    # header — logo left, company info right
-    sub = f"{d['ticker']}  ·  {d['sector']}  ·  {d['industry']}"
-    if os.path.exists(LOGO_PATH):
-        logo_img = RLImage(LOGO_PATH, width=1.4*inch, height=0.55*inch)
-        logo_cell = logo_img
-    else:
-        logo_cell = Paragraph("", sty("empty"))
-
-    hdr_left = Table(
-        [[logo_cell],
-         [Paragraph(f"<font size='14' color='#ffffff'><b>{d['name']}</b></font>", sty("cn", textColor=WHITE, fontSize=14, fontName="Helvetica-Bold", leading=18))],
-         [Paragraph(f"<font size='9' color='#8C9DB5'>{sub}</font>", sty("cs", textColor=SILVER, fontSize=9, leading=12))]],
-        colWidths=[4.5*inch]
-    )
-    hdr_left.setStyle(TableStyle([("LEFTPADDING",(0,0),(-1,-1),0),("TOPPADDING",(0,0),(-1,-1),2),("BOTTOMPADDING",(0,0),(-1,-1),2)]))
-
-    hdr = [[
-        hdr_left,
-        Paragraph(
-            f"<b>Equity Tearsheet</b><br/>Manole Capital Management<br/>{d['generated']}",
-            sty("r", fontSize=8, textColor=SILVER, alignment=TA_RIGHT, leading=13)),
-    ]]
-    ht = Table(hdr, colWidths=[4.5*inch, 2.4*inch])
-    ht.setStyle(TableStyle([
-        ("BACKGROUND",    (0,0),(-1,-1),NAVY),
-        ("VALIGN",        (0,0),(-1,-1),"MIDDLE"),
-        ("TOPPADDING",    (0,0),(-1,-1),12),
-        ("BOTTOMPADDING", (0,0),(-1,-1),12),
-        ("LEFTPADDING",   (0,0),(0,-1),14),
-        ("RIGHTPADDING",  (1,0),(1,-1),14),
-    ]))
-    story += [ht, Spacer(1, 10)]
-
-    # market data + valuation
-    story += section("Market Data & Valuation")
-    story.append(Spacer(1, 4))
-    beta = f"{float(d['beta']):.2f}" if d["beta"] else "—"
-    hi52 = fmt(d["hi52"], prefix="$") if d["hi52"] else "—"
-    lo52 = fmt(d["lo52"], prefix="$") if d["lo52"] else "—"
-    div_y = f"{float(d['div_yield'])*100:.2f}%" if d["div_yield"] else "—"
-    story.append(two_col(
-        [("Current Price",    fmt(d["price"])),
-         ("Market Cap",       fmt(d["mktcap"])),
-         ("Enterprise Value", fmt(d["ev"])),
-         ("Cash & Equiv.",    fmt(d["cash"])),
-         ("Total Debt",       fmt(d["debt"])),
-         ("52-Week Return",   cpct(d["perf52"])),
-         ("52-Week High",     hi52),
-         ("52-Week Low",      lo52),
-         ("Beta",             beta),
-         ("Dividend Yield",   div_y)],
-        [("P/E (TTM)",    mul(d["pe"])),
-         ("P/E (Fwd)",    mul(d["fpe"])),
-         ("EV/EBITDA",    mul(d["ev_ebt"])),
-         ("EV/Revenue",   mul(d["ev_rev"])),
-         ("Price/Book",   mul(d["pb"])),
-         ("Price/Sales",  mul(d["ps"]))],
-    ))
-    story.append(Spacer(1, 10))
-
-    # financials
-    story += section("Financials (TTM)")
-    story.append(Spacer(1, 4))
-    gm  = f"{float(d['gross_m'])*100:.1f}%"  if d["gross_m"]  else "—"
-    em  = f"{float(d['ebitda_m'])*100:.1f}%" if d["ebitda_m"] else "—"
-    nm  = f"{float(d['net_m'])*100:.1f}%"    if d["net_m"]    else "—"
-    eps = f"${float(d['eps']):.2f}"           if d["eps"]      else "—"
-    story.append(two_col(
-        [("Revenue",        fmt(d["rev"])),
-         ("Revenue Growth", cpct(d["rev_g"])),
-         ("Gross Margin",   gm),
-         ("EBITDA",         fmt(d["ebitda"])),
-         ("EBITDA Margin",  em),
-         ("Net Income",     fmt(d["ni"])),
-         ("Net Margin",     nm),
-         ("Free Cash Flow", fmt(d["fcf"])),
-         ("EPS (TTM)",      eps),
-         ("EPS Growth",     cpct(d["eps_g"]))],
-        [],
-    ))
-    story.append(Spacer(1, 10))
-
-    # business
-    story += section("Business")
-    story.append(Spacer(1, 4))
-    emp = f"{int(d['employees']):,}" if d["employees"] else "—"
-    rows = [("Sector", d["sector"]), ("Industry", d["industry"]), ("Employees", emp)]
-    if d["website"]:
-        rows.append(("Website", f'<link href="{d["website"]}">{d["website"]}</link>'))
-    story.append(one_col(rows))
-    story.append(Spacer(1, 6))
-    if d["desc"]:
-        story.append(Paragraph(d["desc"], S_desc))
-    story.append(Spacer(1, 10))
-
-    # resources
-    quartr  = f"https://web.quartr.com/search?query={d['ticker']}"
-    sec_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={d['ticker']}&type=10-K&owner=include&count=10"
-    story += section("Resources")
-    story.append(Spacer(1, 4))
-    res = [("Quartr — Earnings Calls & Transcripts",
-            f'<link href="{quartr}">{quartr}</link>'),
-           ("SEC Filings — 10-K / 10-Q",
-            f'<link href="{sec_url}">EDGAR Search: {d["ticker"]}</link>')]
-    if d["website"]:
-        res.append(("Investor Relations", f'<link href="{d["website"]}">{d["website"]}</link>'))
-    story.append(one_col(res))
-
     # ── footer pinned to bottom of every page via onPage callback ────
     FOOTER_TEXT = ("Data sourced from Yahoo Finance  ·  For informational purposes only  ·  "
                    "Not investment advice  ·  Manole Capital Management")
@@ -522,6 +412,121 @@ def build_pdf(d):
         canvas.drawCentredString(letter[0] / 2, B_MAR - 16, FOOTER_TEXT)
         canvas.restoreState()
 
+    # ── story factory — called fresh each time to avoid stateful flowable reuse ──
+    def make_story(extra_pts=0):
+        s = []
+
+        # header — logo left, company info right
+        sub = f"{d['ticker']}  ·  {d['sector']}  ·  {d['industry']}"
+        if os.path.exists(LOGO_PATH):
+            logo_cell = RLImage(LOGO_PATH, width=1.4*inch, height=0.55*inch)
+        else:
+            logo_cell = Paragraph("", sty("empty"))
+
+        hdr_left = Table(
+            [[logo_cell],
+             [Paragraph(f"<font size='14' color='#ffffff'><b>{d['name']}</b></font>", sty("cn", textColor=WHITE, fontSize=14, fontName="Helvetica-Bold", leading=18))],
+             [Paragraph(f"<font size='9' color='#8C9DB5'>{sub}</font>", sty("cs", textColor=SILVER, fontSize=9, leading=12))]],
+            colWidths=[4.5*inch]
+        )
+        hdr_left.setStyle(TableStyle([("LEFTPADDING",(0,0),(-1,-1),0),("TOPPADDING",(0,0),(-1,-1),2),("BOTTOMPADDING",(0,0),(-1,-1),2)]))
+
+        hdr = [[
+            hdr_left,
+            Paragraph(
+                f"<b>Equity Tearsheet</b><br/>Manole Capital Management<br/>{d['generated']}",
+                sty("r", fontSize=8, textColor=SILVER, alignment=TA_RIGHT, leading=13)),
+        ]]
+        ht = Table(hdr, colWidths=[4.5*inch, 2.4*inch])
+        ht.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0),(-1,-1),NAVY),
+            ("VALIGN",        (0,0),(-1,-1),"MIDDLE"),
+            ("TOPPADDING",    (0,0),(-1,-1),12),
+            ("BOTTOMPADDING", (0,0),(-1,-1),12),
+            ("LEFTPADDING",   (0,0),(0,-1),14),
+            ("RIGHTPADDING",  (1,0),(1,-1),14),
+        ]))
+        s += [ht, Spacer(1, 10)]
+
+        # market data + valuation
+        s += section("Market Data & Valuation")
+        s.append(Spacer(1, 4))
+        beta  = f"{float(d['beta']):.2f}" if d["beta"] else "—"
+        hi52  = fmt(d["hi52"], prefix="$") if d["hi52"] else "—"
+        lo52  = fmt(d["lo52"], prefix="$") if d["lo52"] else "—"
+        div_y = f"{float(d['div_yield'])*100:.2f}%" if d["div_yield"] else "—"
+        s.append(two_col(
+            [("Current Price",    fmt(d["price"])),
+             ("Market Cap",       fmt(d["mktcap"])),
+             ("Enterprise Value", fmt(d["ev"])),
+             ("Cash & Equiv.",    fmt(d["cash"])),
+             ("Total Debt",       fmt(d["debt"])),
+             ("52-Week Return",   cpct(d["perf52"])),
+             ("52-Week High",     hi52),
+             ("52-Week Low",      lo52),
+             ("Beta",             beta),
+             ("Dividend Yield",   div_y)],
+            [("P/E (TTM)",    mul(d["pe"])),
+             ("P/E (Fwd)",    mul(d["fpe"])),
+             ("EV/EBITDA",    mul(d["ev_ebt"])),
+             ("EV/Revenue",   mul(d["ev_rev"])),
+             ("Price/Book",   mul(d["pb"])),
+             ("Price/Sales",  mul(d["ps"]))],
+        ))
+        s.append(Spacer(1, 10))
+
+        # financials
+        s += section("Financials (TTM)")
+        s.append(Spacer(1, 4))
+        gm  = f"{float(d['gross_m'])*100:.1f}%"  if d["gross_m"]  else "—"
+        em  = f"{float(d['ebitda_m'])*100:.1f}%" if d["ebitda_m"] else "—"
+        nm  = f"{float(d['net_m'])*100:.1f}%"    if d["net_m"]    else "—"
+        eps = f"${float(d['eps']):.2f}"           if d["eps"]      else "—"
+        s.append(two_col(
+            [("Revenue",        fmt(d["rev"])),
+             ("Revenue Growth", cpct(d["rev_g"])),
+             ("Gross Margin",   gm),
+             ("EBITDA",         fmt(d["ebitda"])),
+             ("EBITDA Margin",  em),
+             ("Net Income",     fmt(d["ni"])),
+             ("Net Margin",     nm),
+             ("Free Cash Flow", fmt(d["fcf"])),
+             ("EPS (TTM)",      eps),
+             ("EPS Growth",     cpct(d["eps_g"]))],
+            [],
+        ))
+        s.append(Spacer(1, 10))
+
+        # business
+        s += section("Business")
+        s.append(Spacer(1, 4))
+        emp = f"{int(d['employees']):,}" if d["employees"] else "—"
+        biz_rows = [("Sector", d["sector"]), ("Industry", d["industry"]), ("Employees", emp)]
+        if d["website"]:
+            biz_rows.append(("Website", f'<link href="{d["website"]}">{d["website"]}</link>'))
+        s.append(one_col(biz_rows))
+        s.append(Spacer(1, 6))
+        if d["desc"]:
+            s.append(Paragraph(d["desc"], S_desc))
+        s.append(Spacer(1, 10))
+
+        # resources
+        quartr  = f"https://web.quartr.com/search?query={d['ticker']}"
+        sec_url = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={d['ticker']}&type=10-K&owner=include&count=10"
+        s += section("Resources")
+        s.append(Spacer(1, 4))
+        res = [("Quartr — Earnings Calls & Transcripts",
+                f'<link href="{quartr}">{quartr}</link>'),
+               ("SEC Filings — 10-K / 10-Q",
+                f'<link href="{sec_url}">EDGAR Search: {d["ticker"]}</link>')]
+        if d["website"]:
+            res.append(("Investor Relations", f'<link href="{d["website"]}">{d["website"]}</link>'))
+        s.append(one_col(res))
+
+        if extra_pts:
+            s.append(Spacer(1, extra_pts))
+        return s
+
     # ── binary search: max filler that keeps same page count ─────────
     class _Counter(SimpleDocTemplate):
         pg = 0
@@ -529,30 +534,28 @@ def build_pdf(d):
             self.pg += 1
             super().handle_pageEnd()
 
-    def count_pages(s, filler_pts=0):
+    def count_pages(filler_pts=0):
         tmp = io.BytesIO()
         c = _Counter(tmp, pagesize=letter,
                      leftMargin=L_MAR, rightMargin=R_MAR,
-                     topMargin=T_MAR, bottomMargin=B_MAR)
-        c.build(list(s) + ([Spacer(1, filler_pts)] if filler_pts else []))
+                     topMargin=T_MAR, bottomMargin=B_MAR + 22)
+        c.build(make_story(filler_pts))
         return c.pg
 
-    base_pages = count_pages(story)
+    base_pages = count_pages()
 
     lo, hi = 0.0, float(USABLE_H)
-    for _ in range(8):           # 8 iterations → ~2pt precision
+    for _ in range(8):
         mid = (lo + hi) / 2
-        if count_pages(story, mid) <= base_pages:
+        if count_pages(mid) <= base_pages:
             lo = mid
         else:
             hi = mid
 
-    final_story = list(story) + [Spacer(1, lo)]
-
     doc = SimpleDocTemplate(buf, pagesize=letter,
         leftMargin=L_MAR, rightMargin=R_MAR,
-        topMargin=T_MAR, bottomMargin=B_MAR + 22)   # room for footer line
-    doc.build(final_story, onFirstPage=draw_footer, onLaterPages=draw_footer)
+        topMargin=T_MAR, bottomMargin=B_MAR + 22)
+    doc.build(make_story(lo), onFirstPage=draw_footer, onLaterPages=draw_footer)
     buf.seek(0)
     return buf
 
@@ -579,12 +582,13 @@ st.markdown(f"""
 </div>
 """, unsafe_allow_html=True)
 
-col_in, col_btn = st.columns([4, 1])
-with col_in:
-    ticker_input = st.text_input("", placeholder="Enter ticker(s) — e.g. V, MA, PYPL, ASTS",
-                                 label_visibility="collapsed")
-with col_btn:
-    generate = st.button("Generate", use_container_width=True)
+with st.form("search_form"):
+    col_in, col_btn = st.columns([4, 1])
+    with col_in:
+        ticker_input = st.text_input("", placeholder="Enter ticker(s) — e.g. V, MA, PYPL, ASTS",
+                                     label_visibility="collapsed")
+    with col_btn:
+        generate = st.form_submit_button("Generate", use_container_width=True)
 
 if generate and ticker_input.strip():
     tickers = [t.strip().upper() for t in ticker_input.replace(",", " ").split() if t.strip()]
